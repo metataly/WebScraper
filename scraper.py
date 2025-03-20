@@ -1,59 +1,81 @@
 import requests
 from bs4 import BeautifulSoup
+from deep_translator import GoogleTranslator
 
-# Função para coletar os dados do site
+# Function to collect data from the website
 def scrape_site(url):
-        
-    # Enviar uma solicitação HTTP para o site
+    
+    # Send an HTTP request to the website
     request = requests.get(url)
 
-    # Retornando o status da requisição
+    # Returning request status
     status = request.status_code
    
-    # Verificar se a solicitação foi bem-sucedida (status code 200)
+    # Checking if the request was successful
     if status == 200:
-        # Dicionário a ser retornado no final
+        # Dicionary to be returned at the end
         final_product = {}
         
-        # Criar o objeto BeautifulSoup para analisar o HTML
+        # Creating a BeautifulSoup object to analyze the HTML
         site = BeautifulSoup(request.text, "html.parser")
         #print(site.prettify())
         
-        # Extraindo as informações: nome, codigo de barras, ingredientes
-        # Supondo que estamos buscando por um produto específico
+        # Extracting informations: name, barcode, ingredients
+        # Assuming we are searching for a specific product
         
-        # Extraindo o Nome do produto
+        # Extracting product name
         product = site.find("h2", class_="title-1")
-        # Uso do split porque que a tag <h2> possui mais de um texto
-        final_product["name"] = product.get_text().split("\n")[0]
         
-        # Extraindo o Codigo de barras
+        # checking if the product name was found
+        if product:
+            # Using '.split()' because the tag 'h2' contains more than one text
+            # Using the auxiliary function for text translate
+            translated_text = translator_en(product.get_text().split("\n")[0])
+            
+            # Adding the translated text to the dicionary
+            final_product["name"] = translated_text
+        else:
+           final_product["name"] = "Product name not found!"
+        
+        # Extracting product barcode
         barcode = site.find("span", id="barcode")
-        final_product["barcode"] = barcode.get_text()
-
-        # Extraindo os ingredientes
-        # Identificação muito geral, reduzindo o ambiente de pesquisa
+        
+        if barcode:
+            final_product["barcode"] = barcode.get_text()
+        else:
+            final_product["barcode"] = "Product barcode not found!"
+            
+        # Extracting product ingredients
+        # Narrowing down the search scope
         ingredients_div = site.find("div", id="panel_ingredients_content")
         
         if ingredients_div:
             ingredients = ingredients_div.find("div", class_="panel_text")
-            final_product["ingredients"] = ingredients.get_text(strip=True)
+            translated_text = translator_en(ingredients.get_text(strip=True))
+            final_product["ingredients"] = translated_text
         else: 
-            print("'Elemento Pai' não encontrado!") #Melhorar e adicionar mensagens de erro
+            print("Product ingredients not found!")
     
-    # Retornar os dados extraídos em forma de dicionário
-    return final_product;
+    print(final_product) ### apenas para fins de teste
+    
+    # Returning extracted data in the form of a dicionary
+    return final_product
+    
+# Auxiliary function to translate texts to English
+def translator_en(text_to_translate):
+    
+    return GoogleTranslator(source='auto', target='en').translate(text_to_translate)
     
 def main():
-    # Lista de URLs dos produtos que você quer escanear
+    # List of products URLs that you want to scan 
     urls = ["https://world.openfoodfacts.org/product/7622210584724",
             "https://world.openfoodfacts.org/product/5449000131805", 
-            "https://world.openfoodfacts.org/product/6111252860077"]
+            "https://world.openfoodfacts.org/product/3175680011480"]
     
-    # Lista para armazenar os dados coletados
+    # List to store collected data
     scraped_data = []
 
-    # Iterar sobre as URLs e coletar os dados
+    # Iterate over the URLs and collect the data
     for url in urls:
         data = scrape_site(url)
         
@@ -61,6 +83,6 @@ def main():
             scraped_data.append(data)
     
     
-#chamando a função main
+# Main function 
 if __name__ == "__main__":
     main()
