@@ -1,12 +1,59 @@
 import requests
 from bs4 import BeautifulSoup
-from deep_translator import GoogleTranslator
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.options import Options
+from time import sleep
+import pandas as pd
 
-# Function to collect data from the website
+
+# Function to collect data from the dinamic website
 def scrape_site(url):
     
+    options = Options()
+    options.add_argument("--headless")
+    
+    # Creating a webdriver of chrome
+    navigator = webdriver.Chrome(options=options)
+    navigator.get(url)
+    # Waiting all data load
+    sleep(3)
+
+    # Extracting contry from the selector TAG by click
+    country = navigator.find_element(By.CLASS_NAME, 'select2')
+    country.click()
+    sleep(2)
+    
+    # Writing contry name on the Input TAG 
+    search = navigator.find_element(By.CLASS_NAME, 'select2-search__field')
+    # Write here: 
+    search.send_keys('Cuba')
+    # Sanding by 'Enter'
+    search.send_keys(Keys.RETURN)
+    sleep(2)
+
+    # Creating a BeautifulSoup object to analyze the HTML
+    site = BeautifulSoup(navigator.page_source, "html.parser")
+    #print(site.prettify())
+
+    # Extracting url of 5 itens in the selected contry page
+    product_url = site.find_all("a", class_="list_product_a")[:5]
+    list_product = []
+    
+    # Catching only href atribute
+    for url in product_url:
+        list_product.append(url['href'])
+    
+    navigator.quit()
+    # Returning a list of urls
+    return list_product
+
+# Function to collect data from the website using url of a product
+def scrape_product(urls_products):
+    
     # Send an HTTP request to the website
-    request = requests.get(url)
+    request = requests.get(urls_products)
 
     # Returning request status
     status = request.status_code
@@ -29,11 +76,7 @@ def scrape_site(url):
         # checking if the product name was found
         if product:
             # Using '.split()' because the tag 'h2' contains more than one text
-            # Using the auxiliary function for text translate
-            translated_text = translator_en(product.get_text().split("\n")[0])
-            
-            # Adding the translated text to the dicionary
-            final_product["name"] = translated_text
+            final_product["name"] = product.get_text().split("\n")[0]
         else:
            final_product["name"] = "Product name not found!"
         
@@ -41,7 +84,7 @@ def scrape_site(url):
         barcode = site.find("span", id="barcode")
         
         if barcode:
-            final_product["barcode"] = barcode.get_text()
+            final_product["barcode"] = barcode.get_text(strip=True)
         else:
             final_product["barcode"] = "Product barcode not found!"
             
@@ -51,38 +94,46 @@ def scrape_site(url):
         
         if ingredients_div:
             ingredients = ingredients_div.find("div", class_="panel_text")
-            translated_text = translator_en(ingredients.get_text(strip=True))
-            final_product["ingredients"] = translated_text
+            
+            if ingredients:
+                final_product["ingredients"] = ingredients.get_text(strip=True)
         else: 
-            print("Product ingredients not found!")
-    
-    print(final_product) ### apenas para fins de teste
+           final_product["ingredients"] = "Product ingredients not found!"
     
     # Returning extracted data in the form of a dicionary
     return final_product
-    
-# Auxiliary function to translate texts to English
-def translator_en(text_to_translate):
-    
-    return GoogleTranslator(source='auto', target='en').translate(text_to_translate)
-    
-def main():
-    # List of products URLs that you want to scan 
-    urls = ["https://world.openfoodfacts.org/product/7622210584724",
-            "https://world.openfoodfacts.org/product/5449000131805", 
-            "https://world.openfoodfacts.org/product/3175680011480"]
-    
-    # List to store collected data
-    scraped_data = []
 
-    # Iterate over the URLs and collect the data
+# Function to save the data on csv archive 
+def save_to_csv(data, filename="scraped_data.csv"):
+
+    # Converting the scraped data on a DataFrame 
+    data_df = pd.DataFrame(data)
+    
+    # Converting the DataFrame on csv
+    data_df.to_csv(filename, index=False, encoding="utf-8")
+    
+    #print(data_df) 
+
+def main():
+    # URL from website that you want to scan 
+    url = "https://world.openfoodfacts.org"
+    
+    # Returned list of URLs
+    urls = scrape_site(url)
+    
+    # List to save the product data
+    products = []
+    
+    # Extracting data from URL
     for url in urls:
-        data = scrape_site(url)
-        
-        if data:
-            scraped_data.append(data)
-    
-    
+        product = scrape_product(url)  
+
+        if product:
+            products.append(product)
+            
+    # Saving data to csv
+    save_to_csv(products)
+
 # Main function 
 if __name__ == "__main__":
     main()
