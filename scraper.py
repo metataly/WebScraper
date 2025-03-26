@@ -11,34 +11,35 @@ import pandas as pd
 # Function to collect data from the dinamic website
 def scrape_site(url):
     
-    options = Options()
-    options.add_argument("--headless")
+    #options = Options()
+    #options.add_argument("--headless")
     
     # Creating a webdriver of chrome
-    navigator = webdriver.Chrome(options=options)
+    navigator = webdriver.Chrome() #options=options
     navigator.get(url)
     # Waiting all data load
-    sleep(3)
+    sleep(5)
 
     # Extracting contry from the selector TAG by click
     country = navigator.find_element(By.CLASS_NAME, 'select2')
     country.click()
-    sleep(2)
+    sleep(3)
     
     # Writing contry name on the Input TAG 
     search = navigator.find_element(By.CLASS_NAME, 'select2-search__field')
     # Write here: 
-    search.send_keys('Cuba')
+    search.send_keys('brazil')
+    sleep(5)
     # Sanding by 'Enter'
     search.send_keys(Keys.RETURN)
-    sleep(2)
+    sleep(5)
 
     # Creating a BeautifulSoup object to analyze the HTML
     site = BeautifulSoup(navigator.page_source, "html.parser")
     #print(site.prettify())
 
     # Extracting url of 5 itens in the selected contry page
-    product_url = site.find_all("a", class_="list_product_a")[:5]
+    product_url = site.find_all("a", class_="list_product_a")[:100]
     list_product = []
     
     # Catching only href atribute
@@ -57,11 +58,11 @@ def scrape_product(urls_products):
 
     # Returning request status
     status = request.status_code
-   
+    
+    # Dicionary to be returned at the end
+    final_product = {}
     # Checking if the request was successful
     if status == 200:
-        # Dicionary to be returned at the end
-        final_product = {}
         
         # Creating a BeautifulSoup object to analyze the HTML
         site = BeautifulSoup(request.text, "html.parser")
@@ -97,9 +98,13 @@ def scrape_product(urls_products):
             
             if ingredients:
                 final_product["ingredients"] = ingredients.get_text(strip=True)
+            else: 
+                final_product["ingredients"] = "Product ingredients not found!"
         else: 
            final_product["ingredients"] = "Product ingredients not found!"
-    
+    else:
+        print(f"Error: {status} on URL {urls_products}")
+
     # Returning extracted data in the form of a dicionary
     return final_product
 
@@ -111,8 +116,7 @@ def save_to_csv(data, filename="scraped_data.csv"):
     
     # Converting the DataFrame on csv
     data_df.to_csv(filename, index=False, encoding="utf-8")
-    
-    #print(data_df) 
+
 
 def main():
     # URL from website that you want to scan 
@@ -126,6 +130,7 @@ def main():
     
     # Extracting data from URL
     for url in urls:
+        sleep(2)
         product = scrape_product(url)  
 
         if product:
