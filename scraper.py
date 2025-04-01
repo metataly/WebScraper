@@ -11,11 +11,11 @@ import pandas as pd
 # Function to collect data from the dinamic website
 def scrape_site(url):
     
-    #options = Options()
-    #options.add_argument("--headless")
+    options = Options()
+    options.add_argument("--headless")
     
     # Creating a webdriver of chrome
-    navigator = webdriver.Chrome() #options=options
+    navigator = webdriver.Chrome(options=options) 
     navigator.get(url)
     # Waiting all data load
     sleep(5)
